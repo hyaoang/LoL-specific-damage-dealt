@@ -5,7 +5,9 @@ from matplotlib.patches import Polygon
 
 # ================= Configuration =================
 API_KEY = ""  # Your API Key
-MATCH_ID = "TW2_"  # Your Game ID (note the region prefix, TW server is usually TW2)
+MATCH_ID = (
+    "TW2_"+""  # Your Game ID (note the region prefix, TW server is usually TW2)
+)
 REGION_ROUTE = "sea"
 # ===========================================
 
@@ -167,11 +169,11 @@ def plot_split_triangles(id_to_champ, blue_matrix, red_matrix):
     ax.set_xticklabels(red_champs, rotation=45, ha="right", color="red", fontsize=11)
     ax.set_yticklabels(blue_champs, color="blue", fontsize=11)
 
-    ax.set_xlabel("Red Team (X-axis)", fontsize=12)
-    ax.set_ylabel("Blue Team (Y-axis)", fontsize=12)
+    ax.set_xlabel("Red Team", fontsize=12)
+    ax.set_ylabel("Blue Team", fontsize=12)
 
     ax.set_title(
-        "Head-to-Head Lethal Damage\n(Top-Left: Blue hits Red | Bottom-Right: Red hits Blue)",
+        "Lethal Damage\nGame ID: "+MATCH_ID,
         fontsize=14,
         pad=20,
     )

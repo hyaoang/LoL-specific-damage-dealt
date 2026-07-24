@@ -5,10 +5,12 @@ from matplotlib.patches import Polygon
 
 # ================= Configuration =================
 API_KEY = ""  # Your API Key
+id = input("your ID: ")
 MATCH_ID = (
-    "TW2_"+""  # Your Game ID (note the region prefix, TW server is usually TW2)
+    "TW2_"+id  # Your Game ID (note the region prefix, TW server is usually TW2)
 )
 REGION_ROUTE = "sea"
+RELATIVE_COLOR_MODE = True  # True: 根據該英雄對五名敵人的傷害分佈著色; False: 根據全場最高傷害著色
 # ===========================================
 
 
@@ -84,7 +86,7 @@ def format_to_k(val):
     return f"{val / 1000:.1f}K"
 
 
-def plot_split_triangles(id_to_champ, blue_matrix, red_matrix):
+def plot_split_triangles(id_to_champ, blue_matrix, red_matrix, relative_color_mode=False):
     if blue_matrix is None:
         return
 
@@ -94,11 +96,11 @@ def plot_split_triangles(id_to_champ, blue_matrix, red_matrix):
     fig, ax = plt.subplots(figsize=(10, 8))
     ax.set_aspect("equal")  # Ensure each grid cell is a square
 
-    # Set color mapping and normalization
-    blue_max = blue_matrix.max() if blue_matrix.max() > 0 else 1
-    red_max = red_matrix.max() if red_matrix.max() > 0 else 1
-    blue_norm = plt.Normalize(0, blue_max)
-    red_norm = plt.Normalize(0, red_max)
+    # Set color mapping and global normalization
+    global_blue_max = blue_matrix.max() if blue_matrix.max() > 0 else 1
+    global_red_max = red_matrix.max() if red_matrix.max() > 0 else 1
+    global_blue_norm = plt.Normalize(0, global_blue_max)
+    global_red_norm = plt.Normalize(0, global_red_max)
     blue_cmap = plt.get_cmap("Blues")
     red_cmap = plt.get_cmap("Reds")
 
@@ -114,10 +116,25 @@ def plot_split_triangles(id_to_champ, blue_matrix, red_matrix):
             b_val = blue_matrix[i, j]
             r_val = red_matrix[i, j]
 
+            # 根據模式決定色彩正規化的基準
+            if relative_color_mode:
+                # 藍隊第i位成員攻擊紅隊5人的最高傷害(列)
+                b_row_max = blue_matrix[i, :].max()
+                b_max = b_row_max if b_row_max > 0 else 1
+                b_norm = plt.Normalize(0, b_max)
+
+                # 紅隊第j位成員攻擊藍隊5人的最高傷害(行)
+                r_col_max = red_matrix[:, j].max()
+                r_max = r_col_max if r_col_max > 0 else 1
+                r_norm = plt.Normalize(0, r_max)
+            else:
+                b_norm = global_blue_norm
+                r_norm = global_red_norm
+
             # Top-Left triangle: Blue hits Red (vertices: Top-Left, Top-Right, Bottom-Left)
             poly_blue = Polygon(
                 [tl, tr, bl],
-                facecolor=blue_cmap(blue_norm(b_val)),
+                facecolor=blue_cmap(b_norm(b_val)),
                 edgecolor="white",
                 linewidth=1,
             )
@@ -126,15 +143,15 @@ def plot_split_triangles(id_to_champ, blue_matrix, red_matrix):
             # Bottom-Right triangle: Red hits Blue (vertices: Top-Right, Bottom-Right, Bottom-Left)
             poly_red = Polygon(
                 [tr, br, bl],
-                facecolor=red_cmap(red_norm(r_val)),
+                facecolor=red_cmap(r_norm(r_val)),
                 edgecolor="white",
                 linewidth=1,
             )
             ax.add_patch(poly_red)
 
             # Determine font color based on background color intensity to ensure readability
-            b_color = "white" if blue_norm(b_val) > 0.5 else "black"
-            r_color = "white" if red_norm(r_val) > 0.5 else "black"
+            b_color = "white" if b_norm(b_val) > 0.5 else "black"
+            r_color = "white" if r_norm(r_val) > 0.5 else "black"
 
             # Write Blue team damage text in the top-left
             ax.text(
@@ -166,7 +183,9 @@ def plot_split_triangles(id_to_champ, blue_matrix, red_matrix):
     # Label settings
     ax.set_xticks(np.arange(5))
     ax.set_yticks(np.arange(5))
-    ax.set_xticklabels(red_champs, rotation=45, ha="right", color="red", fontsize=11)
+
+    # 修改為水平擺放(rotation=0)與置中(ha="center")
+    ax.set_xticklabels(red_champs, rotation=0, ha="center", color="red", fontsize=11)
     ax.set_yticklabels(blue_champs, color="blue", fontsize=11)
 
     ax.set_xlabel("Red Team", fontsize=12)
@@ -187,6 +206,6 @@ if __name__ == "__main__":
     data = get_match_data(API_KEY, MATCH_ID, REGION_ROUTE)
     if data:
         id_map, b_mat, r_mat = data
-        plot_split_triangles(id_map, b_mat, r_mat)
+        plot_split_triangles(id_map, b_mat, r_mat, relative_color_mode=RELATIVE_COLOR_MODE)
     else:
         print("Cannot plot the chart because data fetching failed.")
